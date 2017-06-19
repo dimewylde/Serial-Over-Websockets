@@ -1,28 +1,22 @@
 "use strict";
 process.title = 'CCS Serial Over Websocket';
-
-
-var webSocketsServerPort = 1337;
+var conf = require('./conf.json');
 var webSocketServer = require('websocket').server;
 var http = require('http');
-
 // previous messages
 var history = [ ];
 // list of currently connected clients
 var clients = [ ];
-
 ///variables used to send serial log on a websocket
-
 var serialport = require("serialport"); 
 var fs = require('fs');
 const WebSocket = require('ws');
-const ws = new WebSocket('ws://localhost:1337');
-var filePath = "C:\\Users\\YourUser\\YourFolder\\file.txt";
-var serialPort = new serialport("COM9", { baudrate: 56700, parser: serialport.parsers.readline("\n") });
+const ws = new WebSocket('ws://localhost:' + conf.webSocketsServerPort);
+var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate, parser: serialport.parsers.readline("\n") });
 
-fs.writeFile(filePath, "");
 
-///
+//New test, new file
+fs.writeFile(conf.filePath, "");
 
  /*Escaping input strings*/
 function htmlEntities(str) 
@@ -37,8 +31,8 @@ function htmlEntities(str)
 var server = http.createServer(function(request, response) {
   // http server to run simultaneously with the websocket server
 });
-server.listen(webSocketsServerPort, function() {
-  console.log(" Server is listening on port "+ webSocketsServerPort);
+server.listen(conf.webSocketsServerPort, function() {
+  console.log(" Server is listening on port "+ conf.webSocketsServerPort);
 });
 
 /* WebSocket server*/
@@ -46,7 +40,7 @@ server.listen(webSocketsServerPort, function() {
 var wsServer = new webSocketServer({httpServer: server});
 
 
-// Attempt to connect to the websocket server
+// This callback function is called every time someone tries to connect to the WebSocket server
 wsServer.on('request', function(request) 
 {
 
@@ -56,7 +50,7 @@ wsServer.on('request', function(request)
   var sockMsg = false;
   console.log(' Connection accepted.');
 
-  // send back messages history
+  // send back chat history
   if (history.length > 0) 
   {
     connection.sendUTF(JSON.stringify({ type: 'history', data: history} ));
@@ -66,33 +60,35 @@ wsServer.on('request', function(request)
   connection.on('message', function(message) 
   {
     if (message.type === 'utf8') { // accept only text
-
+    // first message sent by user is their name
      if (sockMsg === false) 
      {
-        // remember msg
+        // remember user name
         sockMsg = htmlEntities(message.utf8Data);
         console.log( "Message: " + sockMsg + ", length: " + sockMsg.length );
 
         var consLog = 'MSG: ' + sockMsg;
         if (sockMsg.length < 2 )
         {
-          fs.appendFile(filePath, "Socket sent: " + sockMsg + '\n');
+          fs.appendFile(conf.filePath, "Socket sent: " + sockMsg + '\n');
           serialPort.write(sockMsg);
         }
-        
+        //console.log(consLog);
 
       } else 
       { 
         // log and broadcast the message
           console.log(' Received Message from '+ sockMsg + ': ' + message.utf8Data);
 
+
+
         //history of all sent messages
           var obj = {text: htmlEntities(message.utf8Data)};
           history.push(obj);
-          history = history.slice(-3);
+          history = history.slice(-5);
           console.log("history length: " + history.length);
 
-        // broadcast msg so listener can receive it
+        // broadcast msg
           var json = JSON.stringify({ type:'message', data: obj });
           for (var i=0; i < clients.length; i++) 
           {
@@ -118,9 +114,11 @@ wsServer.on('request', function(request)
 function openPort()
 {
   serialPort.on("open", function () {
+  //console.log('open');
   serialPort.on('data', function(data) {
-  writeToFile(data);
-  sendSocket(data);
+    //console.log(data);
+    writeToFile(data);
+    sendSocket(data);
 
   });
 });
@@ -128,21 +126,27 @@ function openPort()
 
 function writeToPort(data)
 {
+  //console.log("entering write command");
+  //serialPort.write("0");
   serialPort.write(data);
 }
 
 function writeToFile(data)
 {
-  fs.appendFile(filePath, data + '\n');
+  fs.appendFile(conf.filePath, data + '\n');
+  //console.log("file written");
 }
 
 function sendSocket(data)
 {
+  //console.log("Sending WebSocket...");
   ws.send(data);
 }
 
+//Run functions sequence
 
 openPort();
 
+//setTimeout(writeToPort, 3000);
 
 //Send WebSocket Serial
