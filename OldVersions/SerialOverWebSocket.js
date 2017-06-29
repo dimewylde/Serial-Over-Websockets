@@ -12,17 +12,7 @@ var serialport = require("serialport");
 var fs = require('fs');
 const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:' + conf.webSocketsServerPort);
-var isPortOpen = true;
-
-  var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate}, function (err) 
-  {
-    if (err) 
-    {
-      console.log('\nError: ' + err.message + " , port might be already in use by another application\n");
-      isPortOpen = false;
-    }
-  });
-
+var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate, parser: serialport.parsers.readline("\n") });
 
 
 //New test, new file
@@ -78,15 +68,7 @@ wsServer.on('request', function(request)
         if (sockMsg.length < 2 )
         {
           fs.appendFile(conf.filePath, "Socket sent: " + sockMsg + '\n');
-          if (isPortOpen)
-          {
-              writeToPort(sockMsg);
-          }else
-          {
-              console.log("\nCan't write to serial device, \nport is closed or being used by another application\n");
-              ws.send("\nTest Failed\n");
-          }
-          
+          writeToPort(sockMsg);
         }
 
       } else 
