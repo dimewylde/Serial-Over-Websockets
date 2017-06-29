@@ -1,3 +1,5 @@
+////v1.1//////
+
 "use strict";
 process.title = 'CCS Serial Over Websocket';
 var conf = require('./conf.json');
