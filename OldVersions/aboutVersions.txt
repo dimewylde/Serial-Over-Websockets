@@ -1,1 +1,2 @@
 v1.0 no error handling
+v1.3 error handling in sudden disconnection from serial port. Cleaning history array from failed messages in previous test

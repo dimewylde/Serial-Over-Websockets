@@ -15,7 +15,7 @@ var fs = require('fs');
 const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:' + conf.webSocketsServerPort);
 
-var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate, parser: serialport.parsers.readline("\n")}, function (err) 
+  var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate, parser: serialport.parsers.readline("\n")}, function (err) 
   {
     if (err) 
     {
@@ -23,7 +23,9 @@ var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate, parser:
     }
   });
 
-//Overwrite or create new file
+
+
+//New test, new file
 fs.writeFile(conf.filePath, "");
 
 
@@ -50,6 +52,12 @@ wsServer.on('request', function(request)
   var sockMsg = false;
   console.log('.Connection accepted.');
 
+  // send back message's history
+  if (history.length > 0) 
+  {
+    connection.sendUTF(JSON.stringify({ type: 'history', data: history} ));
+  }
+
   // received message
   connection.on('message', function(message) 
   {
@@ -72,9 +80,6 @@ wsServer.on('request', function(request)
           {
               console.log("\nCan't write to serial device, \nport is closed or being used by another application\n");
               sendSocket("\nTest Failed, can't communicate with serial port\n");
-              //Cleaning history array
-              history = [ ];
-
           }
           
         }
@@ -101,6 +106,7 @@ wsServer.on('request', function(request)
         {
           if (sockMsg !== false ) 
           {
+            //console.log(" Peer "+ connection.remoteAddress + " disconnected.");
           }
         });
       }
@@ -109,11 +115,8 @@ wsServer.on('request', function(request)
 
   
 });
-//Send serial logs
-openPort();
 
-
-//Escaping input strings
+ //Escaping input strings
 function htmlEntities(str) 
 {
   return String(str)
@@ -125,7 +128,6 @@ function openPort()
 {
   serialPort.on("open", function () 
   {
-        console.log("Opening Serial Port");
         serialPort.on('data', function(data) 
         {
           writeToFile(data);
@@ -150,5 +152,22 @@ function sendSocket(data)
   ws.send(data);
 }
 
+/*
+function pushMsg()
+{
+          var obj = {text: htmlEntities(message.utf8Data)};
+          history.push(obj);
+          history = history.slice(-5);
+          console.log("history length: " + history.length);
+}
 
-
+function broadcastMsg()
+{
+          var json = JSON.stringify({ type:'message', data: obj });
+          for (var i=0; i < clients.length; i++) 
+          {
+                clients[i].sendUTF(json);
+          }
+}
+*/
+openPort();

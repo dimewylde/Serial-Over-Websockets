@@ -2,5 +2,5 @@
 	"webSocketsServerPort" : 1337,
 	"COMname":"COM9",
 	"baudRate":56700,
-	"filePath":"C:\\Users\\gutiealf\\nodeSerialExample\\file.txt"
+	"filePath":".\\file.txt"
 }
