@@ -14,6 +14,10 @@ var serialport = require("serialport");
 var fs = require('fs');
 const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:' + conf.webSocketsServerPort);
+var obj = {text: htmlEntities(message.utf8Data)};
+
+
+//Opening serial port
 
 var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate, parser: serialport.parsers.readline("\n")}, function (err) 
   {
@@ -27,15 +31,14 @@ var serialPort = new serialport(conf.COMname, { baudrate: conf.baudRate, parser:
 fs.writeFile(conf.filePath, "");
 
 
+// http server to run simultaneously with the websocket server
+var server = http.createServer(function(request, response) {});
 
-
-/* HTTP server*/
-var server = http.createServer(function(request, response) {
-  // http server to run simultaneously with the websocket server
-});
-server.listen(conf.webSocketsServerPort, function() {
+server.listen(conf.webSocketsServerPort, function() 
+{
   console.log(" Server is listening on port "+ conf.webSocketsServerPort);
-});
+}
+);
 
 /* Creation of WebSocket server*/
 var wsServer = new webSocketServer({httpServer: server});
@@ -49,6 +52,7 @@ wsServer.on('request', function(request)
   var index = clients.push(connection) - 1;
   var sockMsg = false;
   console.log('.Connection accepted.');
+  broadcastMsg(obj, clients[]);
 
   // received message
   connection.on('message', function(message) 
@@ -70,6 +74,7 @@ wsServer.on('request', function(request)
 
           }else
           {
+
               console.log("\nCan't write to serial device, \nport is closed or being used by another application\n");
               sendSocket("\nTest Failed, can't communicate with serial port\n");
               //Cleaning history array
@@ -83,24 +88,23 @@ wsServer.on('request', function(request)
       { 
         // log and broadcast the message
 
+        broadcastMsg(obj, clients[]);
+
         //history of all sent messages
-          var obj = {text: htmlEntities(message.utf8Data)};
+          
           history.push(obj);
           history = history.slice(-5);
           console.log("history length: " + history.length);
           
-        // broadcast msg
-          var json = JSON.stringify({ type:'message', data: obj });
-          for (var i=0; i < clients.length; i++) 
-          {
-                clients[i].sendUTF(json);
-          }
+        
 
         // user disconnected
         connection.on('close', function(connection) 
         {
           if (sockMsg !== false ) 
           {
+            // broadcast msg to all connected clients
+            
           }
         });
       }
@@ -114,6 +118,16 @@ openPort();
 
 
 //Escaping input strings
+function broadcastMsg(obj, arr[])
+{
+  console.log("Broadcasting...");
+  var json = JSON.stringify({ type:'message', data: obj });
+  for (var i=0; i < arr.length; i++) 
+  {
+      arr[i].sendUTF(json);
+  }
+}
+
 function htmlEntities(str) 
 {
   return String(str)
@@ -123,8 +137,10 @@ function htmlEntities(str)
 //Send serial log over a websocket 
 function openPort()
 {
+
   serialPort.on("open", function () 
   {
+
         console.log("Opening Serial Port");
         serialPort.on('data', function(data) 
         {
