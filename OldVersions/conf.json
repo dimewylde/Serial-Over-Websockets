@@ -1,0 +1,6 @@
+{
+	"webSocketsServerPort" : 1337,
+	"COMname":"COM9",
+	"baudRate":56700,
+	"filePath":".\\file.txt"
+}

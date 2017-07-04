@@ -10,11 +10,13 @@ var history = [ ];
 // list of currently connected clients
 var clients = [ ];
 ///variables used to send serial log on a websocket
+var json = "";
+var msg = "";
 var serialport = require("serialport"); 
 var fs = require('fs');
 const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:' + conf.webSocketsServerPort);
-var obj = {text: htmlEntities(message.utf8Data)};
+
 
 
 //Opening serial port
@@ -52,17 +54,25 @@ wsServer.on('request', function(request)
   var index = clients.push(connection) - 1;
   var sockMsg = false;
   console.log('.Connection accepted.');
-  broadcastMsg(obj, clients[]);
 
   // received message
   connection.on('message', function(message) 
   {
-    if (message.type === 'utf8') { // accept only text
+    if (message.type === 'utf8') 
+    { // accept only text
 
-     if (sockMsg === false) 
-     {
+     
         sockMsg = htmlEntities(message.utf8Data);
         console.log( "Message: " + sockMsg + ", length: " + sockMsg.length );
+
+        //history of all sent messages
+        var obj = {text: htmlEntities(message.utf8Data)};
+        history.push(obj);
+        history = history.slice(-5);
+        //concatenating every message in a single string to broadcast it
+        msg += sockMsg + " ";
+        
+        
 
         if (sockMsg.length < 2 )
         {
@@ -74,29 +84,30 @@ wsServer.on('request', function(request)
 
           }else
           {
-
               console.log("\nCan't write to serial device, \nport is closed or being used by another application\n");
-              sendSocket("\nTest Failed, can't communicate with serial port\n");
+              msg += "\nTest Failed, can't communicate with serial port\n";
+              broadcastMsg(msg, clients);
               //Cleaning history array
               history = [ ];
-
+              msg="";
           }
           
         }
+        if(sockMsg.contains("Not enough"))
+        {
+            console.log("\nTest Failed. Transaction was not successful\n");
+            msg += "\nTest Failed, Not enough credit\n";
+            broadcastMsg(msg, clients);
+            history = [ ];
+            msg="";
 
-      } else 
-      { 
+        }
+
+        console.log("history length: " + history.length + " history msgs: " + msg );
+          
         // log and broadcast the message
 
-        broadcastMsg(obj, clients[]);
-
-        //history of all sent messages
-          
-          history.push(obj);
-          history = history.slice(-5);
-          console.log("history length: " + history.length);
-          
-        
+        broadcastMsg(msg, clients);
 
         // user disconnected
         connection.on('close', function(connection) 
@@ -107,8 +118,9 @@ wsServer.on('request', function(request)
             
           }
         });
-      }
+      
     }
+
   });
 
   
@@ -118,15 +130,18 @@ openPort();
 
 
 //Escaping input strings
-function broadcastMsg(obj, arr[])
+function broadcastMsg(msg, cli)
 {
-  console.log("Broadcasting...");
-  var json = JSON.stringify({ type:'message', data: obj });
-  for (var i=0; i < arr.length; i++) 
-  {
-      arr[i].sendUTF(json);
-  }
+    console.log("Broadcasting...");
+
+    for (var i=0; i < cli.length; i++) 
+    {
+        cli[i].sendUTF(msg);
+      
+    }
+
 }
+
 
 function htmlEntities(str) 
 {
