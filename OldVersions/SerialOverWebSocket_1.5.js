@@ -58,7 +58,7 @@ wsServer.on('request', function(request)
   console.log("\n Clients length: " + clients.length + "\n");
   if (clients.length > 2)
   {
-
+    
     //broadcastMsg(msg, clients);
   }
 
@@ -89,21 +89,28 @@ wsServer.on('request', function(request)
           {
               console.log("\nCan't write to serial device, \nport is closed or being used by another application\n");
               msg += "\nTest Failed, can't communicate with serial port\n";
-              broadcastMsg(msg);
-              //Cleaning history array
-              history = [ ];
-              msg="";
+              broadcastMsg(msg, clients);
+              clearTest();
           }
           
         }
-        
-        setInterval(function(){preValidate(sockMsg)}, 3000);
+        if(sockMsg.includes("Not enough"))
+        {
+            console.log("\nTest Failed. Transaction was not successful\n");
+            msg += "\nTest Failed, Not enough credit\n";
+            broadcastMsg(msg, clients);
+            clearTest();
 
-        console.log("\n History length: " + history.length + " history msgs: " + msg +"\n");
-          
-        // log and broadcast the message
+        }
+        if(sockMsg.includes("Vending")  &&  !sockMsg.includes("Not enough"))
+        {
+            console.log("\nTransaction was successful\n");
+            //msg += "\nTest Failed, Not enough credit\n";
+            broadcastMsg(msg, clients);
+            clearTest();
 
-        //broadcastMsg(msg, clients);
+        }
+
 
         // user disconnected
         connection.on('close', function(connection) 
@@ -123,64 +130,28 @@ wsServer.on('request', function(request)
 //Send serial logs
 openPort();
 
-function preValidate(socket)
-{
-        if(socket.includes("Not enough"))
-        {
-            console.log("\nTest Failed. Transaction was not successful\n");
-            msg += "\nTest Failed, Not enough credit\n";
-            if (clients.length > 0)
-            {
-                broadcastMsg(msg);
-            }
-            freshTest();
-
-        }
-        if(socket.includes("Vending"))
-        {
-            console.log("\nTransaction was successful\n");
-            //msg += "\nTest Failed, Not enough credit\n";
-            if (clients.length > 0)
-            {
-                broadcastMsg(msg);
-            }
-            freshTest();
-
-        }
-        
-
-
-}
-
-function broadcastMsg(msg)
-{
-    console.log("\n Broadcasting...  Clients length: " + clients.length + "\n" );
-
-    if (clients.length > 0)
-    {
-        for (var i=0; i < clients.length; i++) 
-        {
-            clients[i].sendUTF(msg);
-          
-        }
-    }
-}
-
-function freshTest()
-{
-    console.log("\n Fresh Test \n");
-    history = [ ];
-    msg="";
-    /*
-    if (clients.length > 0)
-    {
-       wsServer.closeAllConnections();
-    }*/
-    
-    clients = [ ];
-}
 
 //Escaping input strings
+function broadcastMsg(msg, cli)
+{
+    console.log("\n Broadcasting... \n");
+
+    for (var i=0; i < cli.length; i++) 
+    {
+        cli[i].sendUTF(msg);
+      
+    }
+
+}
+
+function clearTest()
+{
+  msg = "";
+  clients = [];
+  history = [];
+}
+
+
 function htmlEntities(str) 
 {
   return String(str)
@@ -193,7 +164,6 @@ function openPort()
 
   serialPort.on("open", function () 
   {
-
         console.log("\n Opening Serial Port \n");
         serialPort.on('data', function(data) 
         {
